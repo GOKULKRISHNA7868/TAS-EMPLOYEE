@@ -3,6 +3,7 @@ import { useAuthStore } from "../store/authStore";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Lock, Mail } from "lucide-react";
+import { motion } from "framer-motion";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -26,13 +27,15 @@ function Login() {
   };
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800
-      flex flex-col justify-center py-12 sm:px-6 lg:px-8"
-    >
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="sm:mx-auto sm:w-full sm:max-w-md"
+      >
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center shadow-md">
             <Lock className="w-8 h-8 text-white" />
           </div>
         </div>
@@ -42,10 +45,15 @@ function Login() {
         <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
           Sign in to access your dashboard
         </p>
-      </div>
+      </motion.div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow-xl rounded-lg sm:px-10">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md"
+      >
+        <div className="bg-white dark:bg-gray-800 py-8 px-6 shadow-xl rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
@@ -62,11 +70,11 @@ function Login() {
                   id="email"
                   name="email"
                   type="email"
-                  autoComplete="email"
+                  autoComplete="username"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  className="pl-10 px-3 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
                   placeholder="Enter your email"
                 />
               </div>
@@ -87,11 +95,11 @@ function Login() {
                   id="password"
                   name="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  className="pl-10 px-3 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
                   placeholder="Enter your password"
                 />
               </div>
@@ -101,16 +109,14 @@ function Login() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`
-                    w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700
-                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-                    ${isLoading ? "opacity-75 cursor-not-allowed" : ""}
-                  }`}
+                className={`w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                  isLoading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
               >
                 {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Signing in...
+                  <div className="flex items-center space-x-2">
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Signing in...</span>
                   </div>
                 ) : (
                   "Sign in"
@@ -119,7 +125,7 @@ function Login() {
             </div>
           </form>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

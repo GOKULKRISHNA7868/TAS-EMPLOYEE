@@ -30,6 +30,7 @@ function Projects() {
   const { user } = useAuthStore();
   const [reassigningTask, setReassigningTask] = useState(null);
   const [reassignComment, setReassignComment] = useState("");
+  const [projectMap, setProjectMap] = useState({});
 
   const handleReassign = async (task, projectId) => {
     try {
@@ -273,7 +274,9 @@ function Projects() {
         <thead>
           <tr>
             <th className="border p-2">Task ID</th>
-            <th className="border p-2">Title</th>
+            <th className="border p-2">Project Name</th>
+
+            <th className="border p-2">Task Title</th>
             <th className="border p-2">Assigned To</th>
             <th className="border p-2">Due Date</th>
             <th className="border p-2">Review</th>
@@ -308,6 +311,7 @@ function Projects() {
                       task.task_id
                     )}
                   </td>
+                  <td className="p-2 border">{project.name}</td>
                   <td className="p-2 border">
                     {isEditing ? (
                       <input
@@ -321,9 +325,19 @@ function Projects() {
                         }
                       />
                     ) : (
-                      task.title
+                      <div>
+                        <div className="font-semibold">{task.title}</div>
+                        {task.description && (
+                          <div className="text-xs text-gray-500 mt-1 truncate max-w-[250px]">
+                            {task.description.length > 60
+                              ? `${task.description.slice(0, 60)}...`
+                              : task.description}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
+
                   <td className="p-2 border">
                     {getEmployeeName(task.assigned_to)}
                   </td>
@@ -362,7 +376,6 @@ function Projects() {
                       <option value="pending">Pending</option>
                       <option value="in_progress">In Progress</option>
                       <option value="completed">Completed</option>
-                      <option value="overdue">Overdue</option>
                     </select>
                   </td>
                   <td className="p-2 border text-xs">
@@ -393,10 +406,10 @@ function Projects() {
                     <div>
                       Updated At:{" "}
                       {task.progress_updated_at &&
-                      !isNaN(new Date(task.progress_updated_at)) ? (
+                      typeof task.progress_updated_at.toDate === "function" ? (
                         format(
-                          new Date(task.progress_updated_at),
-                          "yyyy-MM-dd HH:mm"
+                          task.progress_updated_at.toDate(),
+                          "MM-dd-yyyy HH:mm"
                         )
                       ) : (
                         <span className="italic text-gray-400">

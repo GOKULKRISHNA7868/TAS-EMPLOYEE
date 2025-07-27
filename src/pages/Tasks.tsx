@@ -219,58 +219,55 @@ function Projects() {
   };
 
   return (
-    <div className="p-4 space-y-6">
+    // Only the return JSX is updated — all state, hooks, logic remain unchanged.
+
+    <div className="p-4 space-y-8">
       {teams.map((team) => {
         const teamProjects = projects.filter((p) => p.teamId === team.id);
 
         return (
-          <div key={team.id} className="border rounded-lg p-4 bg-white shadow">
-            <h2 className="text-xl font-semibold mb-2">
+          <div
+            key={team.id}
+            className="border rounded-xl p-6 bg-white shadow-md"
+          >
+            <h2 className="text-2xl font-semibold text-gray-800 mb-1">
               Team: {team.teamName}
             </h2>
-            <p className="text-sm text-gray-500 mb-3">
+            <p className="text-sm text-gray-500 mb-4">
               Members: {team.members.map(getEmployeeName).join(", ")}
             </p>
+
             {teamProjects.map((project) => {
               const form = getTaskForm(project.id);
               const tasks = projectTasks[project.id] || [];
 
               return (
-                <div key={project.id} className="mb-6 border-t pt-4">
+                <div key={project.id} className="border-t pt-4 mt-6">
                   <h3
-                    className="text-lg font-semibold cursor-pointer hover:underline"
+                    className="text-lg font-semibold text-blue-700 cursor-pointer hover:underline mb-1"
                     onClick={() =>
                       setExpandedProject((p) =>
                         p === project.id ? null : project.id
                       )
                     }
                   >
-                    {project.name}
+                    📁 {project.name}
                   </h3>
-                  <p className="text-sm text-gray-500">{project.description}</p>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {project.description}
+                  </p>
+
                   {expandedProject === project.id && (
                     <>
-                      {/* Task form */}
-                      <div className="mt-3 grid gap-2">
+                      {/* Task Form */}
+                      <div className="grid md:grid-cols-2 gap-4 mb-4">
                         <input
                           placeholder="Task Title"
                           value={form.title}
                           onChange={(e) =>
                             updateTaskForm(project.id, "title", e.target.value)
                           }
-                          className="border p-2 rounded"
-                        />
-                        <textarea
-                          placeholder="Task Description"
-                          value={form.description}
-                          onChange={(e) =>
-                            updateTaskForm(
-                              project.id,
-                              "description",
-                              e.target.value
-                            )
-                          }
-                          className="border p-2 rounded"
+                          className="border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                         />
                         <input
                           type="date"
@@ -282,9 +279,21 @@ function Projects() {
                               e.target.value
                             )
                           }
-                          className="border p-2 rounded"
+                          className="border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                         />
-                        <label className="flex gap-2 items-center">
+                        <textarea
+                          placeholder="Task Description"
+                          value={form.description}
+                          onChange={(e) =>
+                            updateTaskForm(
+                              project.id,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                          className="border p-2 rounded-lg col-span-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                        <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
                             checked={form.assignToAll}
@@ -296,8 +305,8 @@ function Projects() {
                               )
                             }
                           />
-                          Assign to all
-                        </label>
+                          <label className="text-sm">Assign to all</label>
+                        </div>
                         {!form.assignToAll && (
                           <select
                             value={form.assignToMember}
@@ -308,7 +317,7 @@ function Projects() {
                                 e.target.value
                               )
                             }
-                            className="border p-2 rounded"
+                            className="border p-2 rounded-lg"
                           >
                             <option value="">Select Member</option>
                             {team.members.map((id) => (
@@ -320,55 +329,46 @@ function Projects() {
                         )}
                         <button
                           onClick={() => handleAssignTask(project.id, team.id)}
-                          className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                          className="col-span-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
                         >
-                          Assign Task
+                          ➕ Assign Task
                         </button>
                       </div>
 
-                      {/* Task table */}
+                      {/* Task Table */}
                       {tasks.length > 0 && (
-                        <div className="overflow-x-auto mt-5">
-                          <table className="w-full text-sm border border-gray-300 rounded">
-                            <thead className="bg-gray-100">
+                        <div className="overflow-x-auto mt-6">
+                          <table className="w-full border text-sm text-left rounded-lg overflow-hidden shadow-sm">
+                            <thead className="bg-gray-100 text-gray-700 uppercase">
                               <tr>
-                                <th className="p-2 border">Task ID</th>
-                                <th className="p-2 border">Title</th>
-                                <th className="p-2 border">Assigned To</th>
-                                <th className="p-2 border">Due Date</th>
-                                <th className="p-2 border">Status</th>
-                                <th className="p-2 border">Progress</th>
-                                <th className="p-2 border">Actions</th>
+                                <th className="p-3 border">Task ID</th>
+                                <th className="p-3 border">Title</th>
+                                <th className="p-3 border">Assigned To</th>
+                                <th className="p-3 border">Due Date</th>
+                                <th className="p-3 border">Status</th>
+                                <th className="p-3 border">Progress</th>
+                                <th className="p-3 border text-center">
+                                  Actions
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
-                              {tasks.map((task) => {
+                              {tasks.map((task, idx) => {
                                 const isOverdue =
                                   new Date(task.due_date) < new Date();
                                 const isEditing = editingTaskId === task.id;
+                                const rowBg =
+                                  idx % 2 === 0 ? "bg-white" : "bg-gray-50";
 
                                 return (
-                                  <tr key={task.id}>
+                                  <tr key={task.id} className={rowBg}>
                                     <td className="p-2 border">
-                                      {isEditing ? (
-                                        <input
-                                          className="border p-1 w-full"
-                                          value={editedTask.task_id}
-                                          onChange={(e) =>
-                                            setEditedTask((prev) => ({
-                                              ...prev,
-                                              title: e.target.value,
-                                            }))
-                                          }
-                                        />
-                                      ) : (
-                                        task.task_id
-                                      )}
+                                      {task.task_id}
                                     </td>
                                     <td className="p-2 border">
                                       {isEditing ? (
                                         <input
-                                          className="border p-1 w-full"
+                                          className="border p-1 rounded w-full"
                                           value={editedTask.title}
                                           onChange={(e) =>
                                             setEditedTask((prev) => ({
@@ -394,7 +394,7 @@ function Projects() {
                                       {isEditing ? (
                                         <input
                                           type="date"
-                                          className="border p-1"
+                                          className="border p-1 rounded"
                                           value={editedTask.due_date}
                                           onChange={(e) =>
                                             setEditedTask((prev) => ({
@@ -416,7 +416,7 @@ function Projects() {
                                             status: e.target.value,
                                           })
                                         }
-                                        className="text-sm border rounded px-1"
+                                        className="border rounded px-2 py-1"
                                       >
                                         <option value="pending">Pending</option>
                                         <option value="in_progress">
@@ -425,57 +425,61 @@ function Projects() {
                                         <option value="completed">
                                           Completed
                                         </option>
-                                        <option value="overdue">Overdue</option>
                                       </select>
                                     </td>
-                                    <td className="p-2 border text-xs">
+                                    <td className="p-2 border text-gray-600 text-xs">
                                       {task.progress_status || (
                                         <span className="italic text-gray-400">
                                           Not submitted
                                         </span>
                                       )}
                                     </td>
-                                    <td className="p-2 border text-center flex gap-2 items-center justify-center">
-                                      {isEditing ? (
-                                        <>
-                                          <button
-                                            onClick={() =>
-                                              handleEditSave(
-                                                task.id,
-                                                project.id
-                                              )
-                                            }
-                                            className="text-green-600 font-medium hover:underline"
-                                          >
-                                            Save
-                                          </button>
-                                          <button
-                                            onClick={() =>
-                                              setEditingTaskId(null)
-                                            }
-                                            className="text-gray-500 hover:underline"
-                                          >
-                                            Cancel
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Pencil
-                                            onClick={() =>
-                                              handleEditClick(task)
-                                            }
-                                            className="text-blue-500 cursor-pointer hover:text-blue-700"
-                                            size={18}
-                                          />
-                                          <Trash2
-                                            onClick={() =>
-                                              handleDelete(task.id, project.id)
-                                            }
-                                            className="text-red-500 cursor-pointer hover:text-red-700"
-                                            size={18}
-                                          />
-                                        </>
-                                      )}
+                                    <td className="p-2 border">
+                                      <div className="flex items-center justify-center gap-2">
+                                        {isEditing ? (
+                                          <>
+                                            <button
+                                              onClick={() =>
+                                                handleEditSave(
+                                                  task.id,
+                                                  project.id
+                                                )
+                                              }
+                                              className="text-green-600 hover:underline text-sm"
+                                            >
+                                              Save
+                                            </button>
+                                            <button
+                                              onClick={() =>
+                                                setEditingTaskId(null)
+                                              }
+                                              className="text-gray-500 hover:underline text-sm"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Pencil
+                                              onClick={() =>
+                                                handleEditClick(task)
+                                              }
+                                              className="text-blue-600 cursor-pointer hover:text-blue-800"
+                                              size={18}
+                                            />
+                                            <Trash2
+                                              onClick={() =>
+                                                handleDelete(
+                                                  task.id,
+                                                  project.id
+                                                )
+                                              }
+                                              className="text-red-600 cursor-pointer hover:text-red-800"
+                                              size={18}
+                                            />
+                                          </>
+                                        )}
+                                      </div>
                                     </td>
                                   </tr>
                                 );
@@ -495,5 +499,4 @@ function Projects() {
     </div>
   );
 }
-
 export default Projects;

@@ -20,25 +20,42 @@ function Layout() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+  const navLinks = [
+    { path: "/", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/TeamManager", icon: Users, label: "Manage Team" },
+    { path: "/TeamMatrix", icon: Users, label: "Team Performance" },
+    { path: "/projects", icon: Briefcase, label: "Projects" },
+    { path: "/tasks", icon: CheckSquare, label: "Create Tasks" },
+    { path: "/ViewTasks", icon: CheckSquare, label: "All Tasks" },
+    { path: "/mytasks", icon: CheckSquare, label: "My Tasks" },
+    {
+      path: "/RaiseProjectTicket",
+      icon: Briefcase,
+      label: "View Project Tickets",
+    },
+    {
+      path: "/ProjectDocCreator",
+      icon: Briefcase,
+      label: "Document Creator",
+    },
+    { path: "/calendar", icon: Calendar, label: "Calendar" },
+    { path: "/settings", icon: Settings, label: "Settings" },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
-      {/* Mobile menu button */}
+    <div className="min-h-screen flex bg-gray-100 dark:bg-gray-900">
+      {/* Mobile Sidebar Toggle */}
       <button
         onClick={toggleSidebar}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white dark:bg-gray-800 shadow-lg"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md"
       >
         {isSidebarOpen ? (
-          <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+          <X className="h-6 w-6 text-gray-800 dark:text-white" />
         ) : (
-          <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+          <Menu className="h-6 w-6 text-gray-800 dark:text-white" />
         )}
       </button>
 
@@ -46,90 +63,79 @@ function Layout() {
       <aside
         className={`${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform duration-300 ease-in-out`}
+        } md:translate-x-0 fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-md transition-transform duration-300 ease-in-out`}
       >
-        <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-xl font-semibold text-blue-600 dark:text-blue-400">
+        <div className="h-16 flex items-center justify-center border-b border-gray-200 dark:border-gray-700">
+          <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">
             StartupPM
           </h1>
         </div>
 
-        <nav className="p-4 space-y-1">
-          {[
-            { path: "/", icon: LayoutDashboard, label: "Dashboard" },
-            //{ path: "/users", icon: Users, label: "Team" },
-            //{ path: "/AddUsers", icon: Users, label: "Add Users" },
-            { path: "/TeamManager", icon: Users, label: "Manage Team" },
-            { path: "/projects", icon: Briefcase, label: "Projects" },
-            { path: "/tasks", icon: CheckSquare, label: "Create Tasks" },
-            { path: "/ViewTasks", icon: CheckSquare, label: "All Tasks" },
-            { path: "/mytasks", icon: CheckSquare, label: "My Tasks" },
-            {
-              path: "/RaiseProjectTicket",
-              icon: Briefcase,
-              label: "View Project Tickets",
-            },
-            //{ path: "/ProjectSelector", icon: Briefcase, label: "Project Selector" },
-            {
-              path: "/ProjectDocCreator",
-              icon: Briefcase,
-              label: "Document Creator",
-            },
-
-            { path: "/calendar", icon: Calendar, label: "Calendar" },
-            { path: "/settings", icon: Settings, label: "Settings" },
-          ].map(({ path, icon: Icon, label }) => (
+        <nav className="p-4 space-y-2">
+          {navLinks.map(({ path, icon: Icon, label }) => (
             <Link
               key={path}
               to={path}
               onClick={closeSidebar}
-              className={`flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 rounded-lg ${
+              className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all group ${
                 isActive(path)
-                  ? "bg-gray-100 dark:bg-gray-700"
-                  : "hover:bg-gray-50 dark:hover:bg-gray-700"
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-white"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
               }`}
             >
-              <Icon className="h-5 w-5 mr-3" />
+              <Icon className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" />
               {label}
             </Link>
           ))}
         </nav>
-
-        <div className="absolute bottom-0 w-64 p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <img
-              src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.email}`}
-              alt="Avatar"
-              className="h-8 w-8 rounded-full"
-            />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {user?.email}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => signOut()}
-            className="mt-4 flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-          >
-            <LogOut className="h-5 w-5 mr-2" />
-            Sign out
-          </button>
-        </div>
       </aside>
 
       {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto p-4 md:p-6">
-        <Outlet />
-      </main>
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Navbar */}
+        <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 flex items-center justify-between shadow-sm">
+          <div className="text-lg font-semibold text-gray-800 dark:text-white">
+            {location.pathname === "/"
+              ? "Dashboard"
+              : location.pathname.replace("/", "").replace(/([A-Z])/g, " $1")}
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <img
+                src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.email}`}
+                alt="User Avatar"
+                className="h-9 w-9 rounded-full border border-blue-300 shadow"
+              />
+              <div className="text-sm text-gray-800 dark:text-gray-200">
+                {user?.email}
+              </div>
+            </div>
+            <button
+              onClick={signOut}
+              className="flex items-center px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition"
+            >
+              <LogOut className="h-4 w-4 mr-1" />
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

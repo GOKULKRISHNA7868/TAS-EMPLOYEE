@@ -6,6 +6,7 @@ import {
   getDocs,
   updateDoc,
   doc,
+  getDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
@@ -20,11 +21,13 @@ export default function MyTasks() {
   const [loading, setLoading] = useState(false);
   const [progressData, setProgressData] = useState({});
   const { user } = useAuthStore();
+  const [userMap, setUserMap] = useState({});
 
   const fetchTasks = async () => {
     if (!user) return;
     setLoading(true);
     try {
+      // Step 1: Fetch all tasks assigned to current user
       const q = query(
         collection(db, "tasks"),
         where("assigned_to", "==", user.uid)
@@ -34,7 +37,33 @@ export default function MyTasks() {
         id: doc.id,
         ...doc.data(),
       }));
-      setTasks(tasksList);
+
+      // Step 2: Extract unique created_by userIds
+      const createdByIds = [
+        ...new Set(tasksList.map((task) => task.created_by)),
+      ];
+
+      // Step 3: Fetch employee names
+      const usersSnap = await Promise.all(
+        createdByIds.map((id) => getDoc(doc(db, "employees", id)))
+      );
+
+      const userMapping = {};
+      usersSnap.forEach((docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          userMapping[docSnap.id] = data.name || docSnap.id;
+        }
+      });
+
+      // Step 4: Map names into tasks
+      const enrichedTasks = tasksList.map((task) => ({
+        ...task,
+        created_by: userMapping[task.created_by] || task.created_by,
+      }));
+
+      setUserMap(userMapping);
+      setTasks(enrichedTasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
       message.error("Failed to fetch tasks.");
@@ -103,7 +132,7 @@ export default function MyTasks() {
       dataIndex: "created_by",
     },
     {
-      title: "Status",
+      title: "Review",
       dataIndex: "status",
     },
     {
@@ -147,12 +176,35 @@ export default function MyTasks() {
         />
       ),
     },
+
     {
       title: "Action",
       render: (_, record) => (
         <Button type="primary" onClick={() => handleUpdateProgress(record.id)}>
           Update
         </Button>
+      ),
+    },
+    {
+      title: "Feedback",
+      render: (_, record) => (
+        <div>
+          <div>
+            <strong>Reassigned:</strong> {record.reassign_count || 0}
+          </div>
+          <div>
+            <strong>Comments:</strong>
+            {Array.isArray(record.comments) && record.comments.length > 0 ? (
+              <ul style={{ paddingLeft: 16, marginBottom: 0 }}>
+                {record.comments.map((c, idx) => (
+                  <li key={idx}>{c.text}</li>
+                ))}
+              </ul>
+            ) : (
+              <span className="italic text-gray-400">No comments</span>
+            )}
+          </div>
+        </div>
       ),
     },
   ];

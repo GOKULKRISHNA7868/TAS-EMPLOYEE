@@ -17,6 +17,7 @@ import AddUsers from "./pages/AddUsers";
 import RaiseProjectTicket from "./pages/RaiseProjectTicket";
 //import RaiseProjectTicket from "./pages/RaiseProjectTicket";
 import ViewTasks from "./pages/ViewTasks";
+import TeamMatrix from "./pages/TeamMatrix";
 
 import ProjectDocCreator from "./pages/ProjectDocCreator";
 
@@ -59,6 +60,7 @@ function App() {
           <Route path="users" element={<UserManagement />} />
           <Route path="AddUsers" element={<AddUsers />} />
           <Route path="TeamManager" element={<TeamManager />} />
+          <Route path="TeamMatrix" element={<TeamMatrix />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="projects" element={<Projects />} />
           <Route path="tasks" element={<Tasks />} />

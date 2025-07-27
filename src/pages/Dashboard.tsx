@@ -1,334 +1,304 @@
-import React from "react";
-import { useQuery } from "react-query";
-import { format, formatDistanceToNow } from "date-fns";
+import React, { useEffect, useState } from "react";
 import {
-  Users,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Briefcase,
   Calendar,
-  TrendingUp,
-  BarChart2,
-  Activity,
-  AlertTriangle,
-} from "lucide-react";
+  Card,
+  Typography,
+  Modal,
+  Table,
+  Tag,
+  Spin,
+  Collapse,
+  Button,
+  Row,
+  Col,
+} from "antd";
+import dayjs, { Dayjs } from "dayjs";
+import { useSpring, animated } from "@react-spring/web";
 import {
-  getProjectStats,
-  getTaskStats,
-  getTeamStats,
-  getRecentActivity,
-} from "../lib/firebase";
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { useAuthStore } from "../store/authStore";
 
-function Dashboard() {
-  const { data: projectStats, isLoading: loadingProjects } = useQuery(
-    "projectStats",
-    getProjectStats,
-    { staleTime: 5 * 60 * 1000 }
-  );
+const { Title, Text } = Typography;
+const { Panel } = Collapse;
 
-  const { data: taskStats, isLoading: loadingTasks } = useQuery(
-    "taskStats",
-    getTaskStats,
-    { staleTime: 5 * 60 * 1000 }
-  );
+export default function PerformanceDashboard() {
+  const { user } = useAuthStore();
+  const [loading, setLoading] = useState(true);
+  const [employee, setEmployee] = useState<any>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [dayTasks, setDayTasks] = useState<any[]>([]);
 
-  const { data: teamStats, isLoading: loadingTeam } = useQuery(
-    "teamStats",
-    getTeamStats,
-    { staleTime: 5 * 60 * 1000 }
-  );
+  useEffect(() => {
+    if (!user?.uid) return;
+    (async function fetchData() {
+      setLoading(true);
+      try {
+        const empSnap = await getDocs(
+          query(collection(db, "employees"), where("id", "==", user.uid))
+        );
+        setEmployee(empSnap.docs[0]?.data());
 
-  const { data: recentActivity, isLoading: loadingActivity } = useQuery(
-    "recentActivity",
-    getRecentActivity,
-    { staleTime: 1 * 60 * 1000 }
-  );
+        const tSnap = await getDocs(
+          query(collection(db, "tasks"), where("assigned_to", "==", user.uid))
+        );
+        const enriched = await Promise.all(
+          tSnap.docs.map(async (d) => {
+            const t = { id: d.id, ...d.data() } as any;
+            if (t.project_id) {
+              const ps = await getDoc(doc(db, "projects", t.project_id));
+              t.project_name = ps.exists() ? ps.data()?.name : t.project_id;
+            }
+            if (t.created_by) {
+              const es = await getDocs(
+                query(
+                  collection(db, "employees"),
+                  where("id", "==", t.created_by)
+                )
+              );
+              t.assigned_by_name = es.docs[0]?.data()?.name || t.created_by;
+            }
+            return t;
+          })
+        );
 
-  const isLoading =
-    loadingProjects || loadingTasks || loadingTeam || loadingActivity;
+        const allCommentIds = new Set<string>();
+        enriched.forEach((t) =>
+          (t.comments || []).forEach((c: any) => allCommentIds.add(c.userId))
+        );
 
-  if (isLoading) {
+        const empAll = await getDocs(collection(db, "employees"));
+        const idToName: Record<string, string> = {};
+        empAll.forEach((d) => {
+          const dt = d.data();
+          if (allCommentIds.has(dt.id)) idToName[dt.id] = dt.name;
+        });
+
+        const finalTasks = enriched.map((t) => ({
+          ...t,
+          comments: (t.comments || []).map((c: any) => ({
+            ...c,
+            userName: idToName[c.userId] || c.userId,
+          })),
+        }));
+
+        setTasks(finalTasks);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [user?.uid]);
+
+  const fade = useSpring({
+    opacity: loading ? 0 : 1,
+    transform: loading ? "translateY(20px)" : "translateY(0px)",
+  });
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="h-screen flex justify-center items-center">
+        <Spin size="large" />
       </div>
     );
   }
 
+  const total = tasks.length;
+  const completedCount = tasks.filter(
+    (t) => t.progress_status === "completed"
+  ).length;
+  const inProgressCount = tasks.filter(
+    (t) => t.progress_status === "in_progress"
+  ).length;
+  const pendingCount = total - completedCount - inProgressCount;
+
+  const dateCellRender = (value: Dayjs) => {
+    const d = value.format("YYYY-MM-DD");
+    const list = tasks.filter((t) => t.due_date === d);
+    if (!list.length) return null;
+    return (
+      <div className="space-y-1">
+        {list.map((task) => {
+          const isOverdue =
+            task.progress_status === "pending" &&
+            dayjs(task.due_date).isBefore(dayjs(), "day");
+          let icon = "⏳";
+          if (task.progress_status === "completed") icon = "✅";
+          else if (task.progress_status === "in_progress") icon = "🔄";
+          else if (isOverdue) icon = "❌";
+
+          return (
+            <div
+              key={task.id}
+              onClick={() => {
+                setSelectedDate(d);
+                setDayTasks(tasks.filter((t) => t.due_date === d));
+                setModalVisible(true);
+              }}
+              style={{
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                fontSize: 12,
+              }}
+            >
+              <span style={{ marginRight: 4 }}>{icon}</span>
+              <span>{task.task_id}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const onSelect = (value: Dayjs) => {
+    const d = value.format("YYYY-MM-DD");
+    setSelectedDate(d);
+    setDayTasks(tasks.filter((t) => t.due_date === d));
+    setModalVisible(true);
+  };
+
+  const columns = [
+    { title: "Task ID", dataIndex: "task_id", key: "task_id" },
+    { title: "Task", dataIndex: "title", key: "title" },
+    { title: "Project", dataIndex: "project_name", key: "project_name" },
+    {
+      title: "Status",
+      dataIndex: "progress_status",
+      key: "progress_status",
+      render: (s: string) => (
+        <Tag
+          color={
+            s === "completed" ? "green" : s === "in_progress" ? "blue" : "red"
+          }
+        >
+          {s}
+        </Tag>
+      ),
+    },
+    { title: "Due Date", dataIndex: "due_date", key: "due_date" },
+    {
+      title: "Assigned By",
+      dataIndex: "assigned_by_name",
+      key: "assigned_by_name",
+    },
+  ];
+
   return (
-    <div className="p-6 space-y-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Welcome back! Here's what's happening with your projects.
-        </p>
-      </div>
+    <animated.div style={fade} className="p-6 space-y-6">
+      <Card>
+        <Title level={2}>Performance Dashboard</Title>
+        <Row gutter={16}>
+          <Col>
+            <Card type="inner" title="Total Tasks">
+              {total}
+            </Card>
+          </Col>
+          <Col>
+            <Card type="inner" title="Completed">
+              {completedCount}
+            </Card>
+          </Col>
+          <Col>
+            <Card type="inner" title="In Progress">
+              {inProgressCount}
+            </Card>
+          </Col>
+          <Col>
+            <Card type="inner" title="Pending">
+              {pendingCount}
+            </Card>
+          </Col>
+        </Row>
+      </Card>
 
-      {/* Project Overview */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Briefcase className="h-6 w-6 text-blue-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                    Active Projects
-                  </dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      {projectStats?.active}
-                    </div>
-                    <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600 dark:text-green-400">
-                      <TrendingUp className="self-center flex-shrink-0 h-4 w-4 text-green-500 dark:text-green-400" />
-                      <span className="ml-1">
-                        {(
-                          ((projectStats?.active || 0) /
-                            (projectStats?.total || 1)) *
-                          100
-                        ).toFixed(1)}
-                        %
-                      </span>
-                    </div>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Clock className="h-6 w-6 text-yellow-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                    Pending Tasks
-                  </dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      {taskStats?.pending}
-                    </div>
-                    <div className="ml-2 flex items-baseline text-sm font-semibold text-yellow-600 dark:text-yellow-400">
-                      <AlertCircle className="self-center flex-shrink-0 h-4 w-4" />
-                      <span className="ml-1">{taskStats?.overdue} overdue</span>
-                    </div>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Users className="h-6 w-6 text-indigo-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                    Team Members
-                  </dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      {teamStats?.totalMembers}
-                    </div>
-                    <div className="ml-2 flex items-baseline text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                      <BarChart2 className="self-center flex-shrink-0 h-4 w-4" />
-                      <span className="ml-1">
-                        {
-                          Object.keys(teamStats?.departmentDistribution || {})
-                            .length
-                        }{" "}
-                        departments
-                      </span>
-                    </div>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Activity className="h-6 w-6 text-green-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                    Completion Rate
-                  </dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      {(
-                        ((taskStats?.completed || 0) /
-                          (taskStats?.total || 1)) *
-                        100
-                      ).toFixed(1)}
-                      %
-                    </div>
-                    <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600 dark:text-green-400">
-                      <CheckCircle2 className="self-center flex-shrink-0 h-4 w-4" />
-                      <span className="ml-1">{taskStats?.completed} tasks</span>
-                    </div>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Department Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-            Department Distribution
-          </h2>
-          <div className="space-y-4">
-            {Object.entries(teamStats?.departmentDistribution || {}).map(
-              ([dept, count]) => (
-                <div key={dept} className="flex items-center">
-                  <div className="w-32 text-sm text-gray-600 dark:text-gray-400">
-                    {dept}
-                  </div>
-                  <div className="flex-1">
-                    <div className="relative h-4 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="absolute h-full bg-blue-500 dark:bg-blue-600 rounded-full"
-                        style={{
-                          width: `${
-                            (count / (teamStats?.totalMembers || 1)) * 100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="w-12 text-right text-sm text-gray-600 dark:text-gray-400">
-                    {count}
-                  </div>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-            Recent Activity
-          </h2>
-          <div className="flow-root">
-            <ul className="-mb-8">
-              {recentActivity?.map((activity, activityIdx) => (
-                <li key={activity.id}>
-                  <div className="relative pb-8">
-                    {activityIdx !== recentActivity.length - 1 ? (
-                      <span
-                        className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    <div className="relative flex space-x-3">
-                      <div>
-                        <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
-                          <Users className="h-4 w-4 text-white" />
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                        <div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {activity.action}{" "}
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {activity.entity_type}
-                            </span>
-                          </p>
-                        </div>
-                        <div className="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                          {formatDistanceToNow(new Date(activity.created_at), {
-                            addSuffix: true,
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      {/* Upcoming Due Tasks alert card */}
+      {(() => {
+        const today = dayjs();
+        const upcoming = tasks.filter(
+          (t) =>
+            t.progress_status !== "completed" &&
+            dayjs(t.due_date).isAfter(today.subtract(1, "day")) &&
+            dayjs(t.due_date).isBefore(today.add(4, "day"))
+        );
+        if (upcoming.length === 0) return null;
+        return (
+          <Card
+            type="inner"
+            title="Upcoming Due Tasks"
+            style={{ borderLeft: "5px solid orange" }}
+          >
+            <ul style={{ paddingLeft: 20 }}>
+              {upcoming.map((t) => (
+                <li key={t.id}>
+                  <strong>{t.task_id}</strong> - {t.title} (Due: {t.due_date})
                 </li>
               ))}
             </ul>
-          </div>
-        </div>
-      </div>
+          </Card>
+        );
+      })()}
 
-      {/* Task Overview */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Task Overview
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <div className="flex items-center">
-              <CheckCircle2 className="h-6 w-6 text-green-500 dark:text-green-400" />
-              <span className="ml-2 text-green-600 dark:text-green-400 font-medium">
-                Completed
-              </span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-green-800 dark:text-green-300">
-              {taskStats?.completed}
-            </div>
-          </div>
+      <Card>
+        <Title level={4}>Task Calendar</Title>
+        <Calendar
+          fullscreen
+          onSelect={onSelect}
+          dateCellRender={dateCellRender}
+        />
+      </Card>
 
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div className="flex items-center">
-              <Clock className="h-6 w-6 text-blue-500 dark:text-blue-400" />
-              <span className="ml-2 text-blue-600 dark:text-blue-400 font-medium">
-                In Progress
-              </span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-blue-800 dark:text-blue-300">
-              {taskStats?.inProgress}
-            </div>
-          </div>
-
-          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-            <div className="flex items-center">
-              <AlertCircle className="h-6 w-6 text-yellow-500 dark:text-yellow-400" />
-              <span className="ml-2 text-yellow-600 dark:text-yellow-400 font-medium">
-                Pending
-              </span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-yellow-800 dark:text-yellow-300">
-              {taskStats?.pending}
-            </div>
-          </div>
-
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-            <div className="flex items-center">
-              <AlertTriangle className="h-6 w-6 text-red-500 dark:text-red-400" />
-              <span className="ml-2 text-red-600 dark:text-red-400 font-medium">
-                Overdue
-              </span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-red-800 dark:text-red-300">
-              {taskStats?.overdue}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Modal
+        visible={modalVisible}
+        title={`Tasks on ${selectedDate}`}
+        onCancel={() => setModalVisible(false)}
+        footer={<Button onClick={() => setModalVisible(false)}>Close</Button>}
+        width={800}
+      >
+        <Table
+          dataSource={dayTasks}
+          columns={columns}
+          rowKey="id"
+          pagination={false}
+        />
+        <Collapse style={{ marginTop: 16 }} accordion>
+          {dayTasks.map((t) => (
+            <Panel header={`ID ${t.task_id} – ${t.title}`} key={t.id}>
+              <Text>
+                <b>Description:</b> {t.description || "-"}
+              </Text>
+              <br />
+              <Text>
+                <b>Comments:</b>
+              </Text>
+              {(t.comments || []).length > 0 ? (
+                t.comments.map((c: any, i: number) => (
+                  <div key={i}>
+                    • {c.text} (by {c.userName})
+                  </div>
+                ))
+              ) : (
+                <Text type="secondary">None</Text>
+              )}
+              <Text style={{ marginTop: 8 }}>
+                <b>Attachments:</b> {(t.attachments || []).join(", ") || "None"}
+              </Text>
+              <br />
+              <Text style={{ marginTop: 8 }}>
+                <b>Manager Feedback:</b> {t.manager_review || "None"}
+              </Text>
+            </Panel>
+          ))}
+        </Collapse>
+      </Modal>
+    </animated.div>
   );
 }
-
-export default Dashboard;
