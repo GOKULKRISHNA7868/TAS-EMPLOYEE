@@ -378,7 +378,7 @@ export default function EmployeePerformancePage() {
                   <thead className="bg-gray-100 sticky top-0 z-10">
                     <tr>
                       <th className="px-4 py-2 text-left font-semibold text-gray-600">
-                        Ticket ID
+                        Task ID
                       </th>
                       <th className="px-4 py-2 text-left font-semibold text-gray-600">
                         Title
@@ -406,6 +406,9 @@ export default function EmployeePerformancePage() {
                       </th>
                       <th className="px-4 py-2 text-left font-semibold text-gray-600">
                         Created By
+                      </th>
+                      <th className="px-4 py-2 text-left font-semibold text-gray-600">
+                        Linked ID
                       </th>
                       <th className="px-4 py-2 text-left font-semibold text-gray-600">
                         Review
@@ -512,6 +515,9 @@ export default function EmployeePerformancePage() {
                               );
                               return creator?.name || task.created_by || "-";
                             })()}
+                          </td>
+                          <td className="px-4 py-2 text-gray-700">
+                            {task.linked_ticket || "-"}
                           </td>
 
                           <td className="px-4 py-2">

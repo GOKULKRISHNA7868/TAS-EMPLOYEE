@@ -273,9 +273,9 @@ function Projects() {
       <table className="w-full border">
         <thead>
           <tr>
+            <th className="border p-2">Linked ID</th>
             <th className="border p-2">Task ID</th>
             <th className="border p-2">Project Name</th>
-
             <th className="border p-2">Task Title</th>
             <th className="border p-2">Assigned To</th>
             <th className="border p-2">Due Date</th>
@@ -295,6 +295,22 @@ function Projects() {
 
               return (
                 <tr key={task.id}>
+                  <td className="p-2 border">
+                    {isEditing ? (
+                      <input
+                        className="border p-1 w-full"
+                        value={editedTask.linked_ticket}
+                        onChange={(e) =>
+                          setEditedTask((prev) => ({
+                            ...prev,
+                            title: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      task.linked_ticket
+                    )}
+                  </td>
                   <td className="p-2 border">
                     {isEditing ? (
                       <input

@@ -24,6 +24,7 @@ function Projects() {
   const [expandedProject, setExpandedProject] = useState(null);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editedTask, setEditedTask] = useState({});
+  const [projectTickets, setProjectTickets] = useState([]);
 
   const { user } = useAuthStore();
 
@@ -95,6 +96,19 @@ function Projects() {
       getProjectTasks(project.id);
     });
   }, [projects]);
+  useEffect(() => {
+    const fetchTickets = async () => {
+      try {
+        const snap = await getDocs(collection(db, "raiseTickets"));
+        const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        console.log("🔥 Tickets fetched:", data);
+        setProjectTickets(data);
+      } catch (err) {
+        console.error("❌ Error fetching tickets:", err);
+      }
+    };
+    fetchTickets();
+  }, []);
 
   const getTaskForm = (projectId) => {
     return (
@@ -104,6 +118,7 @@ function Projects() {
         dueDate: "",
         assignToAll: false,
         assignToMember: "",
+        linkedTicket: "",
       }
     );
   };
@@ -159,6 +174,7 @@ function Projects() {
         progress_link: "",
         progress_updated_at: null,
         assigned_to: assignedTo,
+        linked_ticket: form.linkedTicket || "",
       };
 
       createTask.mutate(task);
@@ -269,18 +285,25 @@ function Projects() {
                           }
                           className="border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                         />
-                        <input
-                          type="date"
-                          value={form.dueDate}
-                          onChange={(e) =>
-                            updateTaskForm(
-                              project.id,
-                              "dueDate",
-                              e.target.value
-                            )
-                          }
-                          className="border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                        />
+                        <div className="flex flex-col">
+                          <label className="text-sm text-gray-600 mb-1">
+                            Due Date & Time
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={form.dueDate}
+                            onChange={(e) =>
+                              updateTaskForm(
+                                project.id,
+                                "dueDate",
+                                e.target.value
+                              )
+                            }
+                            className="border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            placeholder="Enter due date and time"
+                          />
+                        </div>
+
                         <textarea
                           placeholder="Task Description"
                           value={form.description}
@@ -327,6 +350,30 @@ function Projects() {
                             ))}
                           </select>
                         )}
+                        {projectTickets.length > 0 && (
+                          <select
+                            value={form.linkedTicket}
+                            onChange={(e) =>
+                              updateTaskForm(
+                                project.id,
+                                "linkedTicket",
+                                e.target.value
+                              )
+                            }
+                            className="border p-2 rounded-lg"
+                          >
+                            <option value="">Link to Ticket (optional)</option>
+                            {projectTickets.map((ticket) => (
+                              <option
+                                key={ticket.id}
+                                value={ticket.projectTicketId}
+                              >
+                                {ticket.projectTicketId} - {ticket.title}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+
                         <button
                           onClick={() => handleAssignTask(project.id, team.id)}
                           className="col-span-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
@@ -341,6 +388,8 @@ function Projects() {
                           <table className="w-full border text-sm text-left rounded-lg overflow-hidden shadow-sm">
                             <thead className="bg-gray-100 text-gray-700 uppercase">
                               <tr>
+                                <th className="p-3 border">Linked Ticket</th>
+
                                 <th className="p-3 border">Task ID</th>
                                 <th className="p-3 border">Title</th>
                                 <th className="p-3 border">Assigned To</th>
@@ -362,6 +411,10 @@ function Projects() {
 
                                 return (
                                   <tr key={task.id} className={rowBg}>
+                                    <td className="p-2 border text-blue-600 font-medium text-xs">
+                                      {task.linked_ticket || "-"}
+                                    </td>
+
                                     <td className="p-2 border">
                                       {task.task_id}
                                     </td>
@@ -392,17 +445,22 @@ function Projects() {
                                       }`}
                                     >
                                       {isEditing ? (
-                                        <input
-                                          type="date"
-                                          className="border p-1 rounded"
-                                          value={editedTask.due_date}
-                                          onChange={(e) =>
-                                            setEditedTask((prev) => ({
-                                              ...prev,
-                                              due_date: e.target.value,
-                                            }))
-                                          }
-                                        />
+                                        <div className="flex flex-col">
+                                          <label className="text-xs text-gray-500 mb-0.5">
+                                            Due Date & Time
+                                          </label>
+                                          <input
+                                            type="datetime-local"
+                                            className="border p-1 rounded"
+                                            value={editedTask.due_date}
+                                            onChange={(e) =>
+                                              setEditedTask((prev) => ({
+                                                ...prev,
+                                                due_date: e.target.value,
+                                              }))
+                                            }
+                                          />
+                                        </div>
                                       ) : (
                                         task.due_date
                                       )}

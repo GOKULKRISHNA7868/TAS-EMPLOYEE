@@ -111,6 +111,10 @@ export default function MyTasks() {
 
   const columns = [
     {
+      title: "Linked ticket",
+      dataIndex: "linked_ticket",
+    },
+    {
       title: "Task ID", // ✅ New Column
       dataIndex: "task_id",
       key: "task_id",
@@ -134,6 +138,20 @@ export default function MyTasks() {
     {
       title: "Review",
       dataIndex: "status",
+    },
+
+    {
+      title: "linked ticket",
+      render: (_, record) => (
+        <TextArea
+          placeholder="Optional description"
+          rows={2}
+          defaultValue={record.progress_description}
+          onChange={(e) =>
+            handleInputChange(record.id, "linked_ticket", e.target.value)
+          }
+        />
+      ),
     },
     {
       title: "Progress Status",
