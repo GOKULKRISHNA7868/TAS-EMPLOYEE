@@ -47,7 +47,11 @@ function Layout() {
   const navLinks = [
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
     isTeamLeader && { path: "/TeamManager", icon: Users, label: "Manage Team" },
-    { path: "/TeamMatrix", icon: Users, label: "Team Performance" },
+    isTeamLeader && {
+      path: "/TeamMatrix",
+      icon: Users,
+      label: "Team Performance",
+    },
     { path: "/projects", icon: Briefcase, label: "Projects" },
     isTeamLeader && {
       path: "/tasks",
@@ -59,6 +63,7 @@ function Layout() {
       icon: CheckSquare,
       label: "All Tasks",
     },
+    { path: "Performance", icon: CheckSquare, label: "Performance" },
     { path: "/mytasks", icon: CheckSquare, label: "My Tasks" },
     {
       path: "/RaiseProjectTicket",
@@ -66,7 +71,7 @@ function Layout() {
       label: "View Project Tickets",
     },
     { path: "/ProjectDocCreator", icon: Briefcase, label: "Document Creator" },
-    { path: "/calendar", icon: Calendar, label: "Calendar" },
+    //{ path: "/calendar", icon: Calendar, label: "Calendar" },
     { path: "/settings", icon: Settings, label: "Settings" },
   ].filter(Boolean);
 

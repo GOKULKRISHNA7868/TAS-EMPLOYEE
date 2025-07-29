@@ -6,7 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
 import Projects from "./pages/Projects";
 import Tasks from "./pages/Tasks";
-import Settings from "./pages/Settings";
+//import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Layout from "./components/Layout";
 import UserManagement from "./pages/UserManagement";
@@ -18,7 +18,7 @@ import RaiseProjectTicket from "./pages/RaiseProjectTicket";
 //import RaiseProjectTicket from "./pages/RaiseProjectTicket";
 import ViewTasks from "./pages/ViewTasks";
 import TeamMatrix from "./pages/TeamMatrix";
-
+import Performance from "./pages/Performance";
 import ProjectDocCreator from "./pages/ProjectDocCreator";
 
 function App() {
@@ -65,10 +65,10 @@ function App() {
           <Route path="projects" element={<Projects />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="ViewTasks" element={<ViewTasks />} />
+          <Route path="Performance" element={<Performance />} />
           <Route path="mytasks" element={<MyTasks />} />
           <Route path="RaiseProjectTicket" element={<RaiseProjectTicket />} />
           <Route path="ProjectDocCreator" element={<ProjectDocCreator />} />
-          <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
