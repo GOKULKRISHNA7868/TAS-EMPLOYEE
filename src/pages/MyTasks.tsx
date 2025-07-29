@@ -15,11 +15,16 @@ import { Table, Input, Select, Button, message, Typography, Space } from "antd";
 
 const { TextArea } = Input;
 const { Title } = Typography;
+const { Option } = Select;
 
 export default function MyTasks() {
   const [tasks, setTasks] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [progressData, setProgressData] = useState({});
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [reviewFilter, setReviewFilter] = useState("");
   const { user } = useAuthStore();
   const [userMap, setUserMap] = useState({});
 
@@ -27,7 +32,6 @@ export default function MyTasks() {
     if (!user) return;
     setLoading(true);
     try {
-      // Step 1: Fetch all tasks assigned to current user
       const q = query(
         collection(db, "tasks"),
         where("assigned_to", "==", user.uid)
@@ -38,12 +42,10 @@ export default function MyTasks() {
         ...doc.data(),
       }));
 
-      // Step 2: Extract unique created_by userIds
       const createdByIds = [
         ...new Set(tasksList.map((task) => task.created_by)),
       ];
 
-      // Step 3: Fetch employee names
       const usersSnap = await Promise.all(
         createdByIds.map((id) => getDoc(doc(db, "employees", id)))
       );
@@ -56,7 +58,6 @@ export default function MyTasks() {
         }
       });
 
-      // Step 4: Map names into tasks
       const enrichedTasks = tasksList.map((task) => ({
         ...task,
         created_by: userMapping[task.created_by] || task.created_by,
@@ -64,6 +65,7 @@ export default function MyTasks() {
 
       setUserMap(userMapping);
       setTasks(enrichedTasks);
+      setFilteredTasks(enrichedTasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
       message.error("Failed to fetch tasks.");
@@ -109,13 +111,41 @@ export default function MyTasks() {
     fetchTasks();
   }, [user]);
 
+  const handleSearchFilter = () => {
+    let filtered = [...tasks];
+
+    if (searchText.trim()) {
+      const lowerSearch = searchText.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.title?.toLowerCase().includes(lowerSearch) ||
+          task.description?.toLowerCase().includes(lowerSearch) ||
+          task.created_by?.toLowerCase().includes(lowerSearch) ||
+          task.task_id?.toLowerCase().includes(lowerSearch) ||
+          task.linked_ticket?.toLowerCase().includes(lowerSearch)
+      );
+    }
+
+    if (statusFilter) {
+      filtered = filtered.filter(
+        (task) => task.progress_status === statusFilter
+      );
+    }
+
+    if (reviewFilter) {
+      filtered = filtered.filter((task) => task.status === reviewFilter);
+    }
+
+    setFilteredTasks(filtered);
+  };
+
   const columns = [
     {
       title: "Linked ticket",
       dataIndex: "linked_ticket",
     },
     {
-      title: "Task ID", // ✅ New Column
+      title: "Task ID",
       dataIndex: "task_id",
       key: "task_id",
     },
@@ -139,7 +169,6 @@ export default function MyTasks() {
       title: "Review",
       dataIndex: "status",
     },
-
     {
       title: "linked ticket",
       render: (_, record) => (
@@ -163,9 +192,9 @@ export default function MyTasks() {
             handleInputChange(record.id, "progress_status", value)
           }
         >
-          <Select.Option value="pending">Pending</Select.Option>
-          <Select.Option value="in_progress">In Progress</Select.Option>
-          <Select.Option value="completed">Completed</Select.Option>
+          <Option value="pending">Pending</Option>
+          <Option value="in_progress">In Progress</Option>
+          <Option value="completed">Completed</Option>
         </Select>
       ),
     },
@@ -194,7 +223,6 @@ export default function MyTasks() {
         />
       ),
     },
-
     {
       title: "Action",
       render: (_, record) => (
@@ -230,8 +258,45 @@ export default function MyTasks() {
   return (
     <div className="p-4">
       <Title level={3}>My Assigned Tasks</Title>
+
+      {/* Filters Section */}
+      <Space style={{ marginBottom: 16, flexWrap: "wrap" }}>
+        <Input
+          placeholder="Search tasks..."
+          allowClear
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{ width: 200 }}
+        />
+        <Select
+          placeholder="Filter by progress"
+          allowClear
+          style={{ width: 160 }}
+          value={statusFilter}
+          onChange={(value) => setStatusFilter(value)}
+        >
+          <Option value="pending">Pending</Option>
+          <Option value="in_progress">In Progress</Option>
+          <Option value="completed">Completed</Option>
+        </Select>
+        <Select
+          placeholder="Filter by review"
+          allowClear
+          style={{ width: 160 }}
+          value={reviewFilter}
+          onChange={(value) => setReviewFilter(value)}
+        >
+          <Option value="Pending">Pending</Option>
+          <Option value="Reviewed">Reviewed</Option>
+          <Option value="Rejected">Rejected</Option>
+        </Select>
+        <Button type="primary" onClick={handleSearchFilter}>
+          Search
+        </Button>
+      </Space>
+
       <Table
-        dataSource={tasks}
+        dataSource={filteredTasks}
         columns={columns}
         rowKey="id"
         loading={loading}
