@@ -123,7 +123,8 @@ export default function PerformanceDashboard() {
 
   const dateCellRender = (value: Dayjs) => {
     const d = value.format("YYYY-MM-DD");
-    const list = tasks.filter((t) => t.due_date === d);
+    const list = tasks.filter((t) => t.due_date?.startsWith(d));
+
     if (!list.length) return null;
     return (
       <div className="space-y-1">
@@ -141,7 +142,8 @@ export default function PerformanceDashboard() {
               key={task.id}
               onClick={() => {
                 setSelectedDate(d);
-                setDayTasks(tasks.filter((t) => t.due_date === d));
+                setDayTasks(tasks.filter((t) => t.due_date?.startsWith(d)));
+
                 setModalVisible(true);
               }}
               style={{
@@ -162,7 +164,7 @@ export default function PerformanceDashboard() {
   const onSelect = (value: Dayjs) => {
     const d = value.format("YYYY-MM-DD");
     setSelectedDate(d);
-    setDayTasks(tasks.filter((t) => t.due_date === d));
+    setDayTasks(tasks.filter((t) => t.due_date?.startsWith(dateString)));
     setModalVisible(true);
   };
 

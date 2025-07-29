@@ -15,16 +15,23 @@ import { Table, Input, Select, Button, message, Typography, Space } from "antd";
 
 const { TextArea } = Input;
 const { Title } = Typography;
-const { Option } = Select;
+const { Search } = Input;
+
+function formatGoogleCalendarDate(date) {
+  return (
+    date
+      .toISOString()
+      .replace(/[-:]|\.\d{3}/g, "")
+      .slice(0, 15) + "Z"
+  );
+}
 
 export default function MyTasks() {
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [progressData, setProgressData] = useState({});
-  const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [reviewFilter, setReviewFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const { user } = useAuthStore();
   const [userMap, setUserMap] = useState({});
 
@@ -111,31 +118,19 @@ export default function MyTasks() {
     fetchTasks();
   }, [user]);
 
-  const handleSearchFilter = () => {
-    let filtered = [...tasks];
-
-    if (searchText.trim()) {
-      const lowerSearch = searchText.toLowerCase();
-      filtered = filtered.filter(
-        (task) =>
-          task.title?.toLowerCase().includes(lowerSearch) ||
-          task.description?.toLowerCase().includes(lowerSearch) ||
-          task.created_by?.toLowerCase().includes(lowerSearch) ||
-          task.task_id?.toLowerCase().includes(lowerSearch) ||
-          task.linked_ticket?.toLowerCase().includes(lowerSearch)
-      );
+  const handleSearch = (value) => {
+    setSearchTerm(value);
+    if (value.length < 2) {
+      setFilteredTasks(tasks);
+      return;
     }
 
-    if (statusFilter) {
-      filtered = filtered.filter(
-        (task) => task.progress_status === statusFilter
-      );
-    }
-
-    if (reviewFilter) {
-      filtered = filtered.filter((task) => task.status === reviewFilter);
-    }
-
+    const lower = value.toLowerCase();
+    const filtered = tasks.filter((task) =>
+      Object.values(task).some(
+        (val) => typeof val === "string" && val.toLowerCase().includes(lower)
+      )
+    );
     setFilteredTasks(filtered);
   };
 
@@ -147,7 +142,6 @@ export default function MyTasks() {
     {
       title: "Task ID",
       dataIndex: "task_id",
-      key: "task_id",
     },
     {
       title: "Title",
@@ -160,6 +154,18 @@ export default function MyTasks() {
     {
       title: "Due Date",
       dataIndex: "due_date",
+      render: (due_date, record) => {
+        const isExpired =
+          due_date &&
+          new Date(due_date) < new Date() &&
+          (!record.progress_status || record.progress_status === "pending");
+
+        return (
+          <span style={{ color: isExpired ? "red" : "inherit" }}>
+            {due_date || "—"}
+          </span>
+        );
+      },
     },
     {
       title: "Assigned By",
@@ -168,19 +174,6 @@ export default function MyTasks() {
     {
       title: "Review",
       dataIndex: "status",
-    },
-    {
-      title: "linked ticket",
-      render: (_, record) => (
-        <TextArea
-          placeholder="Optional description"
-          rows={2}
-          defaultValue={record.progress_description}
-          onChange={(e) =>
-            handleInputChange(record.id, "linked_ticket", e.target.value)
-          }
-        />
-      ),
     },
     {
       title: "Progress Status",
@@ -192,9 +185,9 @@ export default function MyTasks() {
             handleInputChange(record.id, "progress_status", value)
           }
         >
-          <Option value="pending">Pending</Option>
-          <Option value="in_progress">In Progress</Option>
-          <Option value="completed">Completed</Option>
+          <Select.Option value="pending">Pending</Select.Option>
+          <Select.Option value="in_progress">In Progress</Select.Option>
+          <Select.Option value="completed">Completed</Select.Option>
         </Select>
       ),
     },
@@ -232,6 +225,35 @@ export default function MyTasks() {
       ),
     },
     {
+      title: "Add to Calendar",
+      render: (_, record) => {
+        const dateTime = record.due_date ? new Date(record.due_date) : null;
+
+        const calendarUrl = dateTime
+          ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+              record.title || "Task Reminder"
+            )}&dates=${formatGoogleCalendarDate(
+              dateTime
+            )}/${formatGoogleCalendarDate(
+              new Date(dateTime.getTime() + 30 * 60 * 1000)
+            )}&details=${encodeURIComponent(
+              record.description || ""
+            )}&location=&sf=true&output=xml`
+          : null;
+
+        return calendarUrl ? (
+          <Button
+            type="default"
+            onClick={() => window.open(calendarUrl, "_blank")}
+          >
+            Add Reminder
+          </Button>
+        ) : (
+          <span className="text-gray-400 italic">No due date</span>
+        );
+      },
+    },
+    {
       title: "Feedback",
       render: (_, record) => (
         <div>
@@ -258,43 +280,14 @@ export default function MyTasks() {
   return (
     <div className="p-4">
       <Title level={3}>My Assigned Tasks</Title>
-
-      {/* Filters Section */}
-      <Space style={{ marginBottom: 16, flexWrap: "wrap" }}>
-        <Input
-          placeholder="Search tasks..."
+      <Space style={{ marginBottom: 16 }}>
+        <Search
+          placeholder="Search tasks (min 2 letters)"
           allowClear
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{ width: 200 }}
+          onChange={(e) => handleSearch(e.target.value)}
+          style={{ width: 300 }}
         />
-        <Select
-          placeholder="Filter by progress"
-          allowClear
-          style={{ width: 160 }}
-          value={statusFilter}
-          onChange={(value) => setStatusFilter(value)}
-        >
-          <Option value="pending">Pending</Option>
-          <Option value="in_progress">In Progress</Option>
-          <Option value="completed">Completed</Option>
-        </Select>
-        <Select
-          placeholder="Filter by review"
-          allowClear
-          style={{ width: 160 }}
-          value={reviewFilter}
-          onChange={(value) => setReviewFilter(value)}
-        >
-          <Option value="Pending">Pending</Option>
-          <Option value="Reviewed">Reviewed</Option>
-          <Option value="Rejected">Rejected</Option>
-        </Select>
-        <Button type="primary" onClick={handleSearchFilter}>
-          Search
-        </Button>
       </Space>
-
       <Table
         dataSource={filteredTasks}
         columns={columns}
