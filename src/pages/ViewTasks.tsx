@@ -26,6 +26,7 @@ function Projects() {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editedTask, setEditedTask] = useState({});
   const [newComments, setNewComments] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { user } = useAuthStore();
   const [reassigningTask, setReassigningTask] = useState(null);
@@ -270,6 +271,16 @@ function Projects() {
 
   return (
     <div className="p-4">
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search across all tasks..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+          className="w-full p-2 border rounded"
+        />
+      </div>
+
       <table className="w-full border">
         <thead>
           <tr>
@@ -286,8 +297,34 @@ function Projects() {
           </tr>
         </thead>
         <tbody>
-          {projects.map((project) =>
-            (projectTasks[project.id] || []).map((task) => {
+          {projects.map((project) => {
+            const tasks = (projectTasks[project.id] || [])
+              .sort((a, b) => {
+                const aDate = a.due_date ? new Date(a.due_date) : new Date(0);
+                const bDate = b.due_date ? new Date(b.due_date) : new Date(0);
+                return aDate - bDate;
+              })
+              .filter((task) => {
+                const values = [
+                  task.linked_ticket,
+                  task.task_id,
+                  task.title,
+                  task.description,
+                  project.name,
+                  getEmployeeName(task.assigned_to),
+                  task.status,
+                  task.progress_status,
+                  task.progress_description,
+                  task.progress_link,
+                  ...(task.comments || []).map((c) => c.text),
+                ]
+                  .filter(Boolean)
+                  .join(" ")
+                  .toLowerCase();
+                return values.includes(searchTerm);
+              });
+
+            return tasks.map((task) => {
               const isOverdue = new Date(task.due_date) < new Date();
               const isEditing = editingTaskId === task.id;
               const taskComments = task.comments || [];
@@ -523,8 +560,8 @@ function Projects() {
                   </td>
                 </tr>
               );
-            })
-          )}
+            });
+          })}
         </tbody>
       </table>
 
@@ -544,6 +581,7 @@ function Projects() {
             <strong>{reassigningTask?.task?.title}</strong>?<br />
             You may optionally provide a comment.
           </p>
+
           <textarea
             value={reassignComment}
             onChange={(e) => setReassignComment(e.target.value)}

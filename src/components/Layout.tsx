@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import {
@@ -12,38 +12,63 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../lib/firebase";
 
 function Layout() {
-  const { signOut, user } = useAuthStore();
+  const { signOut, user } = useAuthStore(); // user should include `uid`
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isTeamLeader, setIsTeamLeader] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const isActive = (path: string) => location.pathname === path;
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
+  useEffect(() => {
+    const checkTeamLeader = async () => {
+      if (!user?.uid) return setIsLoading(false);
+
+      try {
+        const docRef = doc(db, "teamLeaders", user.uid);
+        const docSnap = await getDoc(docRef);
+        setIsTeamLeader(docSnap.exists());
+      } catch (err) {
+        console.error("Failed to check teamLeader role:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkTeamLeader();
+  }, [user?.uid]);
+
   const navLinks = [
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/TeamManager", icon: Users, label: "Manage Team" },
+    isTeamLeader && { path: "/TeamManager", icon: Users, label: "Manage Team" },
     { path: "/TeamMatrix", icon: Users, label: "Team Performance" },
     { path: "/projects", icon: Briefcase, label: "Projects" },
-    { path: "/tasks", icon: CheckSquare, label: "Create Tasks" },
-    { path: "/ViewTasks", icon: CheckSquare, label: "All Tasks" },
+    isTeamLeader && {
+      path: "/tasks",
+      icon: CheckSquare,
+      label: "Create Tasks",
+    },
+    isTeamLeader && {
+      path: "/ViewTasks",
+      icon: CheckSquare,
+      label: "All Tasks",
+    },
     { path: "/mytasks", icon: CheckSquare, label: "My Tasks" },
     {
       path: "/RaiseProjectTicket",
       icon: Briefcase,
       label: "View Project Tickets",
     },
-    {
-      path: "/ProjectDocCreator",
-      icon: Briefcase,
-      label: "Document Creator",
-    },
+    { path: "/ProjectDocCreator", icon: Briefcase, label: "Document Creator" },
     { path: "/calendar", icon: Calendar, label: "Calendar" },
     { path: "/settings", icon: Settings, label: "Settings" },
-  ];
+  ].filter(Boolean);
 
   return (
     <div className="min-h-screen flex bg-gray-100 dark:bg-gray-900">
@@ -71,23 +96,25 @@ function Layout() {
           </h1>
         </div>
 
-        <nav className="p-4 space-y-2">
-          {navLinks.map(({ path, icon: Icon, label }) => (
-            <Link
-              key={path}
-              to={path}
-              onClick={closeSidebar}
-              className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all group ${
-                isActive(path)
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-white"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              }`}
-            >
-              <Icon className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" />
-              {label}
-            </Link>
-          ))}
-        </nav>
+        {!isLoading && (
+          <nav className="p-4 space-y-2">
+            {navLinks.map(({ path, icon: Icon, label }) => (
+              <Link
+                key={path}
+                to={path}
+                onClick={closeSidebar}
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all group ${
+                  isActive(path)
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                }`}
+              >
+                <Icon className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" />
+                {label}
+              </Link>
+            ))}
+          </nav>
+        )}
       </aside>
 
       {/* Overlay for mobile */}
